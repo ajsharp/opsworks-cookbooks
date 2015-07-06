@@ -1,0 +1,4 @@
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+<% @env.each do |key, val| %>
+<%= key %>=<%= val && val.to_s %>
+<% end %>

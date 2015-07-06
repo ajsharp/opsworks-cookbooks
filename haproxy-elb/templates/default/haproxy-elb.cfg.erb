@@ -1,0 +1,69 @@
+global
+  log 127.0.0.1   local0
+  log 127.0.0.1   local1 notice
+  #log loghost    local0 info
+  maxconn <%= node[:haproxy][:global_max_connections] %>
+  #debug
+  #quiet
+  user haproxy
+  group haproxy
+  <% if node[:haproxy][:stats_socket_level] %>
+  stats socket <%= node[:haproxy][:stats_socket_path] %> level <%= node[:haproxy][:stats_socket_level] %>
+  <% else %>
+  stats socket <%= node[:haproxy][:stats_socket_path] %>
+  <% end %>
+
+defaults
+  log             global
+  mode            http
+  option          httplog
+  option          dontlognull
+  retries         <%= node[:haproxy][:retries] %>
+  option          redispatch
+  maxconn        <%= node[:haproxy][:default_max_connections] %>
+  timeout client <%= node[:haproxy][:client_timeout] %>             # Client and server timeout must match the longest
+  timeout server <%= node[:haproxy][:server_timeout] %>             # time we may wait for a response from the server.
+  timeout queue  <%= node[:haproxy][:queue_timeout] %>              # Don't queue requests too long if saturated.
+  timeout connect <%= node[:haproxy][:connect_timeout] %>           # There's no reason to change this one.
+  timeout http-request <%= node[:haproxy][:http_request_timeout] %>	# A complete request may never take that long.
+  <% if node[:haproxy][:httpclose] %>
+  option          httpclose                                         # disable keepalive (HAProxy does not yet support the HTTP keep-alive mode)
+  <% end %>
+  <% if node[:haproxy][:http_server_close] %>
+  option          http-server-close                                 # enable HTTP connection closing on the server side
+  <% end %>
+  option          abortonclose                                      # enable early dropping of aborted requests from pending queue
+  option          httpchk                                           # enable HTTP protocol to check on servers health
+  <% if node[:haproxy][:enable_stats] -%>
+  stats auth <%= node[:haproxy][:stats_user] %>:<%= node[:haproxy][:stats_password] %>
+  stats uri <%= node[:haproxy][:stats_url] %>
+  <% end -%>
+
+backend elb
+  mode http
+  balance roundrobin
+  option redispatch
+  option forwardfor
+  option httpchk <%= node[:haproxy][:health_check_method] %> <%= node[:haproxy][:health_check_url] %>
+  server elb <%= node[:haproxy][:elb_address] %>:80 weight 10 maxconn 1028 check inter 10s
+
+backend elb_ssl
+  mode tcp
+  balance <%= node[:haproxy][:balance] %>
+  option redispatch
+  option ssl-hello-chk
+  server elb <%= node[:haproxy][:elb_address] %>:80 weight 10 maxconn 1028 check inter 10s
+
+frontend http-in
+  mode http
+  bind :80
+
+  # use_backend elb
+  default_backend elb
+
+frontend https-in
+  mode tcp
+  bind :443
+
+  # use_backend elb_ssl
+  default_backend elb_ssl

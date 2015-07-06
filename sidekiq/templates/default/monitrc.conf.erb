@@ -1,0 +1,7 @@
+check process sidekiq_<%= @app_name %>
+  with pidfile <%= @deploy[:deploy_to] %>/shared/pids/sidekiq.pid
+  start program = "/bin/bash -c 'cd <%= @deploy[:deploy_to] %>/current; <%= @sidekiq[:start_command] %>'"
+        with timeout 90 seconds
+        as uid deploy and gid www-data
+  stop program = "/bin/bash -c '/bin/kill -TERM `cat <%= @deploy[:deploy_to] %>/shared/pids/sidekiq.pid`'" with timeout 180 seconds
+  group sidekiq_<%= @app_name %>
