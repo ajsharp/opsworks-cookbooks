@@ -6,7 +6,7 @@ server {
   listen 80;
 
   location /ping {
-    proxy_pass http://unicorn_.<%= @application[:domains].first %>;
+    proxy_pass http://unicorn_<%= @application[:domains].first %>;
     break;
   }
 }
